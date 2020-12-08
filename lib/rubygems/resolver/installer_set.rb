@@ -26,6 +26,12 @@ class Gem::Resolver::InstallerSet < Gem::Resolver::Set
   attr_reader :remote_set # :nodoc:
 
   ##
+  # Ignore ruby & rubygems specification constraints.
+  #
+
+  attr_accessor :force # :nodoc:
+
+  ##
   # Creates a new InstallerSet that will look for gems in +domain+.
 
   def initialize(domain)
@@ -41,6 +47,7 @@ class Gem::Resolver::InstallerSet < Gem::Resolver::Set
     @local               = {}
     @local_source        = Gem::Source::Local.new
     @remote_set          = Gem::Resolver::BestSet.new
+    @force               = false
     @specs               = {}
   end
 
@@ -67,23 +74,25 @@ class Gem::Resolver::InstallerSet < Gem::Resolver::Set
       [s.version, s.platform == Gem::Platform::RUBY ? -1 : 1]
     end
 
-    found_matching_metadata = found.select do |spec|
-      metadata_satisfied?(spec)
-    end
+    newest = found.last
 
-    newest = found_matching_metadata.last
+    unless @force
+      found_matching_metadata = found.select do |spec|
+        metadata_satisfied?(spec)
+      end
 
-    if newest.nil?
-      newest = found.last
+      if found_matching_metadata.empty?
+        if newest
+          ensure_required_ruby_version_met(newest.spec)
+          ensure_required_rubygems_version_met(newest.spec)
+        else
+          exc = Gem::UnsatisfiableDependencyError.new request
+          exc.errors = errors
 
-      if newest
-        ensure_required_ruby_version_met(newest.spec)
-        ensure_required_rubygems_version_met(newest.spec)
+          raise exc
+        end
       else
-        exc = Gem::UnsatisfiableDependencyError.new request
-        exc.errors = errors
-
-        raise exc
+        newest = found_matching_metadata.last
       end
     end
 
