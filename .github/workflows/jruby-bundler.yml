@@ -10,6 +10,7 @@ on:
 
 jobs:
   jruby_bundler:
+    name: Bundler (Jruby)
     runs-on: ubuntu-18.04
 
     env:
