@@ -82,7 +82,13 @@ module Bundler
         search_object = if source.is_a?(Source::Path)
           Dependency.new(name, version)
         else
-          self
+          locked_bundler_version = Bundler.locked_bundler_version
+
+          if locked_bundler_version && Gem::Version.new(locked_bundler_version) < Gem::Version.new("2.2.0")
+            Dependency.new(name, version)
+          else
+            self
+          end
         end
         platform_object = Gem::Platform.new(platform)
         candidates = source.specs.search(search_object)
